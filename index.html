@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Reminders App</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            text-align: center;
+            color: #007BFF;
+        }
+        #reminderBox {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border: 2px solid #007BFF;
+            border-radius: 8px;
+            background-color: #e0f7fa;
+        }
+        input, button {
+            padding: 10px;
+            width: 100%;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        #reminderList {
+            margin-top: 30px;
+        }
+        .reminder-item {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>The Reminders App</h1>
+    <button onclick="showReminderBox()">+ Add Reminder</button>
+
+    <div id="reminderBox">
+        <h3>Set Your Reminder</h3>
+        <input type="text" id="calendar" placeholder="Pick Date & Time">
+        <input type="text" id="reminderText" placeholder="Enter your reminder">
+        <button onclick="setReminder()">Set Reminder</button>
+    </div>
+
+    <div id="reminderList"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        let picker;
+
+        // Ask notification permission upfront
+        if ("Notification" in window && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+
+        function showReminderBox() {
+            document.getElementById("reminderBox").style.display = "block";
+            if (!picker) {
+                picker = flatpickr("#calendar", {
+                    enableTime: true,
+                    dateFormat: "Y-m-d H:i",
+                    time_24hr: true,
+                });
+            }
+        }
+
+        function setReminder() {
+            const reminderText = document.getElementById("reminderText").value.trim();
+            const dateInput = document.getElementById("calendar").value.trim();
+
+            if (reminderText === "" || dateInput === "") {
+                alert("Please select date, time and enter reminder text.");
+                return;
+            }
+
+            const reminderTime = new Date(dateInput);
+            const now = new Date();
+            const delay = reminderTime - now;
+
+            if (delay <= 0) {
+                alert("Selected time is in the past. Please select a future time.");
+                return;
+            }
+
+            // Add to reminder list
+            const reminderDiv = document.createElement("div");
+            reminderDiv.classList.add("reminder-item");
+            reminderDiv.innerText = `📅 ${dateInput}\n🔔 ${reminderText}`;
+            document.getElementById("reminderList").appendChild(reminderDiv);
+
+            // Set Timer
+            setTimeout(() => {
+                notifyAndSpeak(reminderText, dateInput);
+            }, delay);
+
+            alert("Reminder Set!\n\nDate & Time: " + dateInput + "\nReminder: " + reminderText);
+
+            // Reset
+            document.getElementById("reminderText").value = "";
+            document.getElementById("calendar").value = "";
+            document.getElementById("reminderBox").style.display = "none";
+        }
+
+        function notifyAndSpeak(message, date) {
+            // Voice announcement
+            const utterance = new SpeechSynthesisUtterance(`Reminder now: ${message}`);
+            speechSynthesis.speak(utterance);
+
+            // Browser notification
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("⏰ Reminder", {
+                    body: `${date}\n${message}`,
+                    icon: "https://cdn-icons-png.flaticon.com/512/1827/1827392.png"
+                });
+            }
+        }
+    </script>
+</body>
+</html>
