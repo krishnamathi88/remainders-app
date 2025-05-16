@@ -1,31 +1,95 @@
-violet_index_html = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reminders App (Smartwatch Simulation)</title>
+    <title>Reminders App (Smartwatch Simulation with Past Reminders)</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; text-align: center; background: #8e44ad; padding: 20px; color: white; }
-        input, button { margin-top: 10px; padding: 12px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; width: 80%; }
-        iframe { border: none; width: 320px; height: 320px; display: none; margin-top: 50px; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-        h2 { color: white; }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background: linear-gradient(to right, #8e44ad, #6a1b9a);
+            padding: 20px;
+            color: white;
+        }
+        .app-content {
+            display: block;
+        }
+        #smartwatchView {
+            display: none;
+        }
+        input, button {
+            margin-top: 10px;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            width: 85%;
+            max-width: 400px;
+            outline: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        button {
+            background: linear-gradient(to right, #ab47bc, #8e44ad);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .reminder-list {
+            margin-top: 30px;
+            text-align: center;
+            background: #ffffff33;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .reminder-item {
+            margin-bottom: 10px;
+            padding: 12px;
+            background: #ffffff44;
+            border-radius: 10px;
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body>
 
-    <h2>Set Your Reminder</h2>
-    <input type="text" id="reminderText" placeholder="Enter Reminder Text">
-    <input type="text" id="reminderTime" placeholder="Pick Date & Time">
-    <button onclick="setReminder()">Set Reminder</button>
+    <div class="app-content">
+        <h2>✨ Set Your Reminder</h2>
+        <input type="text" id="reminderText" placeholder="Enter Reminder Text">
+        <input type="text" id="reminderTime" placeholder="Pick Date & Time">
+        <button onclick="setReminder()">Set Reminder</button>
 
-    <iframe id="smartwatchFrame"></iframe>
+        <div class="reminder-list">
+            <h3>📋 Scheduled Reminders</h3>
+            <div id="listContainer"></div>
+        </div>
+        <div class="reminder-list">
+            <h3>⏱ Past Reminders</h3>
+            <div id="pastContainer"></div>
+        </div>
+    </div>
+
+    <div id="smartwatchView">
+        <div class="watch-container">
+            <div style="font-size:40px;">🔔</div>
+            <div style="font-weight:bold; margin: 10px 0;" id="smartwatchText">No reminders yet</div>
+            <button onclick="markDone()" style="background:#ab47bc; color:white; padding:10px 20px; border:none; border-radius:20px;">✔ Mark as done</button>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             flatpickr("#reminderTime", { enableTime: true, dateFormat: "Y-m-d H:i" });
+            refreshReminderList();
+            refreshPastList();
+            autoTriggerSavedReminders();
         });
 
         function setReminder() {
@@ -36,65 +100,90 @@ violet_index_html = """
                 return;
             }
 
-            const reminderTime = new Date(timeInput);
+            const reminderData = { message: message, time: timeInput };
+            saveReminder(reminderData);
+            scheduleReminder(reminderData);
+
+            alert(`Reminder Set for: ${timeInput}\\nMessage: ${message}`);
+            refreshReminderList();
+        }
+
+        function saveReminder(reminder) {
+            let reminders = JSON.parse(localStorage.getItem("reminders")) || [];
+            reminders.push(reminder);
+            localStorage.setItem("reminders", JSON.stringify(reminders));
+        }
+
+        function refreshReminderList() {
+            const container = document.getElementById("listContainer");
+            container.innerHTML = "";
+            let reminders = JSON.parse(localStorage.getItem("reminders")) || [];
+            reminders.forEach(r => {
+                const div = document.createElement("div");
+                div.className = "reminder-item";
+                div.innerText = `📅 ${r.time}\\n🔔 ${r.message}`;
+                container.appendChild(div);
+            });
+        }
+
+        function refreshPastList() {
+            const container = document.getElementById("pastContainer");
+            container.innerHTML = "";
+            let pastReminders = JSON.parse(localStorage.getItem("pastReminders")) || [];
+            pastReminders.forEach(r => {
+                const div = document.createElement("div");
+                div.className = "reminder-item";
+                div.innerText = `📅 ${r.time}\\n🔔 ${r.message}`;
+                container.appendChild(div);
+            });
+        }
+
+        function scheduleReminder(reminder) {
+            const reminderTime = new Date(reminder.time);
             const now = new Date();
             const delay = reminderTime - now;
 
-            if (delay <= 0) {
-                alert("Please select a future time");
-                return;
+            if (delay > 0) {
+                setTimeout(() => {
+                    triggerReminder(reminder.message);
+                    moveToPast(reminder);
+                    refreshReminderList();
+                    refreshPastList();
+                }, delay);
             }
-
-            alert(`Reminder Set for: ${reminderTime}\\nMessage: ${message}`);
-            setTimeout(() => {
-                triggerReminder(message);
-            }, delay);
         }
 
         function triggerReminder(message) {
             speechSynthesis.speak(new SpeechSynthesisUtterance(`Reminder now: ${message}`));
-            const smartwatchHTML = `
-                <html>
-                <head>
-                    <style>
-                        body { margin:0; height:100vh; background:#6a1b9a; display:flex; justify-content:center; align-items:center; }
-                        .watch-container { width:300px; height:300px; border-radius:50%; background:#311b92; border:5px solid #9c27b0; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; text-align:center; padding:20px; box-sizing:border-box; }
-                        .icon { font-size:40px; margin-bottom:15px; }
-                        .reminder-text { font-size:18px; font-weight:bold; margin-bottom:20px; }
-                        .button { background-color:#ab47bc; border:none; border-radius:25px; padding:12px 24px; color:white; font-size:16px; cursor:pointer; }
-                    </style>
-                </head>
-                <body>
-                    <div class="watch-container">
-                        <div class="icon">🔔</div>
-                        <div class="reminder-text">${message}</div>
-                        <button class="button" onclick="window.parent.document.getElementById('smartwatchFrame').style.display='none';">✔ Mark as done</button>
-                    </div>
-                </body>
-                </html>
-            `;
-            const frame = document.getElementById('smartwatchFrame');
-            frame.style.display = 'block';
-            frame.srcdoc = smartwatchHTML;
+            document.getElementById("smartwatchText").innerText = message;
+            document.getElementById("smartwatchView").style.display = 'flex';
+        }
+
+        function markDone() {
+            alert("Marked as done");
+            document.getElementById("smartwatchView").style.display = 'none';
+        }
+
+        function moveToPast(reminder) {
+            removeReminder(reminder);
+            let pastReminders = JSON.parse(localStorage.getItem("pastReminders")) || [];
+            pastReminders.push(reminder);
+            localStorage.setItem("pastReminders", JSON.stringify(pastReminders));
+        }
+
+        function removeReminder(reminderToRemove) {
+            let reminders = JSON.parse(localStorage.getItem("reminders")) || [];
+            reminders = reminders.filter(r => !(r.message === reminderToRemove.message && r.time === reminderToRemove.time));
+            localStorage.setItem("reminders", JSON.stringify(reminders));
+        }
+
+        function autoTriggerSavedReminders() {
+            let reminders = JSON.parse(localStorage.getItem("reminders")) || [];
+            reminders.forEach(r => {
+                scheduleReminder(r);
+            });
         }
     </script>
 
 </body>
 </html>
-"""
-
-# Create project folder
-violet_dir = "/mnt/data/violet_reminder_app"
-os.makedirs(violet_dir, exist_ok=True)
-violet_file = os.path.join(violet_dir, "index.html")
-
-# Write the file
-with open(violet_file, "w", encoding="utf-8") as f:
-    f.write(violet_index_html.strip())
-
-# Create ZIP
-violet_zip_file = "/mnt/data/violet_reminder_app.zip"
-with ZipFile(violet_zip_file, 'w') as zipf:
-    zipf.write(violet_file, arcname="index.html")
-
-violet_zip_file
