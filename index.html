@@ -3,90 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reminders App (Smartwatch Simulation with Past Reminders)</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <title>Cuckoo Reminder App (Smart Sound)</title>
     <style>
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: center;
-            background: linear-gradient(to right, #8e44ad, #6a1b9a);
-            padding: 20px;
-            color: white;
-        }
-        .app-content {
-            display: block;
-        }
-        #smartwatchView {
-            display: none;
-        }
-        input, button {
-            margin-top: 10px;
-            padding: 14px;
-            font-size: 16px;
-            border-radius: 12px;
-            border: 1px solid #ddd;
-            width: 85%;
-            max-width: 400px;
-            outline: none;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        button {
-            background: linear-gradient(to right, #ab47bc, #8e44ad);
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .reminder-list {
-            margin-top: 30px;
-            text-align: center;
-            background: #ffffff33;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            max-width: 450px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .reminder-item {
-            margin-bottom: 10px;
-            padding: 12px;
-            background: #ffffff44;
-            border-radius: 10px;
-            backdrop-filter: blur(4px);
-        }
+        body { margin:0; font-family: Arial, sans-serif; background: linear-gradient(to right, #8e44ad, #6a1b9a); color: white; padding: 0; }
+        header { background: #4a148c; padding: 15px; text-align: center; font-size: 20px; font-weight: bold; }
+        nav { background: #6a1b9a; display: flex; justify-content: space-around; padding: 10px; }
+        nav button { background: transparent; color: white; border: none; font-size: 16px; cursor: pointer; }
+        section { padding: 20px; display: none; }
+        section.active { display: block; }
+        .reminder-item { background: #ffffff44; margin-bottom: 10px; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .btns { display: flex; gap: 8px; }
+        .delete-btn, .edit-btn { background: #e74c3c; border: none; border-radius: 8px; color: white; padding: 6px 10px; cursor: pointer; }
+        .edit-btn { background: #ff9800; }
+        #cuckooPopup { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        #cuckooPopup img { width: 200px; border-radius: 12px; margin-bottom: 20px; }
+        #cuckooPopup .popup-text { color: white; font-size: 20px; margin-bottom: 20px; text-align: center; }
+        #cuckooPopup button { background: #ab47bc; padding: 12px 24px; border: none; border-radius: 8px; color: white; font-size: 16px; }
+        .set-reminder { padding: 20px; text-align: center; }
+        input, button { margin-top: 10px; padding: 12px; font-size: 16px; border-radius: 8px; border: none; width: 80%; max-width: 400px; }
     </style>
 </head>
 <body>
 
-    <div class="app-content">
-        <h2>✨ Set Your Reminder</h2>
-        <input type="text" id="reminderText" placeholder="Enter Reminder Text">
-        <input type="text" id="reminderTime" placeholder="Pick Date & Time">
+    <header>Cuckoo Reminder App</header>
+    <nav>
+        <button onclick="showSection('upcoming')">Upcoming Reminders</button>
+        <button onclick="showSection('past')">Past Reminders</button>
+    </nav>
+
+    <div class="set-reminder">
+        <input type="text" id="reminderText" placeholder="Enter Reminder Text"><br>
+        <input type="datetime-local" id="reminderTime"><br>
         <button onclick="setReminder()">Set Reminder</button>
-
-        <div class="reminder-list">
-            <h3>📋 Scheduled Reminders</h3>
-            <div id="listContainer"></div>
-        </div>
-        <div class="reminder-list">
-            <h3>⏱ Past Reminders</h3>
-            <div id="pastContainer"></div>
-        </div>
     </div>
 
-    <div id="smartwatchView">
-        <div class="watch-container">
-            <div style="font-size:40px;">🔔</div>
-            <div style="font-weight:bold; margin: 10px 0;" id="smartwatchText">No reminders yet</div>
-            <button onclick="markDone()" style="background:#ab47bc; color:white; padding:10px 20px; border:none; border-radius:20px;">✔ Mark as done</button>
-        </div>
+    <section id="upcoming" class="active">
+        <h2>📋 Upcoming Reminders</h2>
+        <div id="listContainer"></div>
+    </section>
+
+    <section id="past">
+        <h2>⏱ Past Reminders</h2>
+        <div id="pastContainer"></div>
+    </section>
+
+    <!-- Cuckoo Popup -->
+    <div id="cuckooPopup">
+        <img src="ba075567-11cf-4131-bad2-330b052fd0c1.png" alt="Cuckoo Bird">
+        <div class="popup-text" id="cuckooMessage">Reminder!</div>
+        <button onclick="dismissCuckoo()">Dismiss</button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
+        const cuckooAudio = new Audio('cuckoo.mp3');
+
+        function showSection(sectionId) {
+            document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
-            flatpickr("#reminderTime", { enableTime: true, dateFormat: "Y-m-d H:i" });
             refreshReminderList();
             refreshPastList();
             autoTriggerSavedReminders();
@@ -104,7 +80,7 @@
             saveReminder(reminderData);
             scheduleReminder(reminderData);
 
-            alert(`Reminder Set for: ${timeInput}\\nMessage: ${message}`);
+            alert(`Reminder set for: ${timeInput}`);
             refreshReminderList();
         }
 
@@ -118,10 +94,14 @@
             const container = document.getElementById("listContainer");
             container.innerHTML = "";
             let reminders = JSON.parse(localStorage.getItem("reminders")) || [];
-            reminders.forEach(r => {
+            reminders.forEach((r, index) => {
                 const div = document.createElement("div");
                 div.className = "reminder-item";
-                div.innerText = `📅 ${r.time}\\n🔔 ${r.message}`;
+                div.innerHTML = `<span>📅 ${r.time}<br>🔔 ${r.message}</span>
+                                 <div class="btns">
+                                     <button class="edit-btn" onclick="editReminder(${index})">📝</button>
+                                     <button class="delete-btn" onclick="deleteReminder(${index})">🗑</button>
+                                 </div>`;
                 container.appendChild(div);
             });
         }
@@ -130,20 +110,21 @@
             const container = document.getElementById("pastContainer");
             container.innerHTML = "";
             let pastReminders = JSON.parse(localStorage.getItem("pastReminders")) || [];
-            pastReminders.forEach(r => {
+            pastReminders.forEach((r, index) => {
                 const div = document.createElement("div");
                 div.className = "reminder-item";
-                div.innerText = `📅 ${r.time}\\n🔔 ${r.message}`;
+                div.innerHTML = `<span>📅 ${r.time}<br>🔔 ${r.message}</span>
+                                 <button class="delete-btn" onclick="deletePastReminder(${index})">🗑</button>`;
                 container.appendChild(div);
             });
         }
 
         function scheduleReminder(reminder) {
-            const reminderTime = new Date(reminder.time);
-            const now = new Date();
+            const reminderTime = new Date(reminder.time).getTime();
+            const now = Date.now();
             const delay = reminderTime - now;
 
-            if (delay > 0) {
+            if (delay > 1000) {
                 setTimeout(() => {
                     triggerReminder(reminder.message);
                     moveToPast(reminder);
@@ -154,14 +135,18 @@
         }
 
         function triggerReminder(message) {
-            speechSynthesis.speak(new SpeechSynthesisUtterance(`Reminder now: ${message}`));
-            document.getElementById("smartwatchText").innerText = message;
-            document.getElementById("smartwatchView").style.display = 'flex';
+            document.getElementById("cuckooMessage").innerText = message;
+            document.getElementById("cuckooPopup").style.display = 'flex';
+
+            // Attempt autoplay
+            cuckooAudio.play().catch(err => {
+                console.log("Autoplay blocked, user must click Dismiss to play sound");
+            });
         }
 
-        function markDone() {
-            alert("Marked as done");
-            document.getElementById("smartwatchView").style.display = 'none';
+        function dismissCuckoo() {
+            cuckooAudio.play();
+            document.getElementById("cuckooPopup").style.display = 'none';
         }
 
         function moveToPast(reminder) {
@@ -177,6 +162,33 @@
             localStorage.setItem("reminders", JSON.stringify(reminders));
         }
 
+        function deleteReminder(index) {
+            let reminders = JSON.parse(localStorage.getItem("reminders")) || [];
+            reminders.splice(index, 1);
+            localStorage.setItem("reminders", JSON.stringify(reminders));
+            refreshReminderList();
+        }
+
+        function deletePastReminder(index) {
+            let pastReminders = JSON.parse(localStorage.getItem("pastReminders")) || [];
+            pastReminders.splice(index, 1);
+            localStorage.setItem("pastReminders", JSON.stringify(pastReminders));
+            refreshPastList();
+        }
+
+        function editReminder(index) {
+            let reminders = JSON.parse(localStorage.getItem("reminders")) || [];
+            let r = reminders[index];
+            const newMessage = prompt("Edit message:", r.message);
+            const newTime = prompt("Edit time (YYYY-MM-DDTHH:MM):", r.time);
+
+            if (newMessage && newTime) {
+                reminders[index] = { message: newMessage, time: newTime };
+                localStorage.setItem("reminders", JSON.stringify(reminders));
+                refreshReminderList();
+            }
+        }
+
         function autoTriggerSavedReminders() {
             let reminders = JSON.parse(localStorage.getItem("reminders")) || [];
             reminders.forEach(r => {
@@ -184,6 +196,9 @@
             });
         }
     </script>
+
+</body>
+</html>
 
 </body>
 </html>
